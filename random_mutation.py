@@ -14,7 +14,7 @@ def mutate_sequence_once(sequence, pos):
     sequence[pos] = new_aa
     return "".join(sequence)
 
-# Function to generate all single mutations
+# Function to generate all single mutations for each position
 def generate_all_single_mutations(sequence, num_mutations):
     mutated_sequences = set()
     for _ in range(num_mutations):
@@ -23,45 +23,53 @@ def generate_all_single_mutations(sequence, num_mutations):
             mutated_sequences.add(mutated_sequence)
     return list(mutated_sequences)
 
-# Main function to read input, perform mutations, and write output
+# Main function to process multiple protein chains
 def main(input_file, output_file):
     try:
+        # Attempt to open and load input JSON file
         with open(input_file, "r") as file:
             data = json.load(file)
+            print("Input data loaded successfully:", data)  # Debugging line
 
-        print("Loaded input data")
+        results = []
 
-        # Accessing nested format in 'proteinChain'
-        original_sequence = data.get("proteinChain", {}).get("sequence")
-        num_mutations = data.get("proteinChain", {}).get("mutation", 1)
+        for protein in data.get("proteinChains", []):
+            name = protein.get("name")
+            original_sequence = protein.get("sequence")
+            num_mutations = protein.get("mutation", 1)
 
-        if original_sequence is None:
-            raise ValueError("Error: 'sequence' is missing in input file under 'proteinChain'.")
-        if not isinstance(num_mutations, int) or num_mutations <= 0:
-            raise ValueError("Error: 'mutation' must be a positive integer.")
+            # Check for required fields
+            if not name or not original_sequence:
+                print(f"Skipping entry with missing name or sequence: {protein}")
+                continue
+            if not isinstance(num_mutations, int) or num_mutations <= 0:
+                print(f"Invalid mutation count for {name}. Skipping.")
+                continue
 
-        # Generate mutated sequences
-        mutated_sequences = generate_all_single_mutations(original_sequence, num_mutations)
-        
-        output_data = {
-            "proteinChain": {
+            # Generate mutated sequences
+            mutated_sequences = generate_all_single_mutations(original_sequence, num_mutations)
+            print(f"Mutated sequences for {name}: {len(mutated_sequences)} generated")  # Debugging line
+            
+            # Add results for this protein
+            results.append({
+                "name": name,
                 "original_sequence": original_sequence,
                 "num_mutations": num_mutations,
                 "mutated_sequences": mutated_sequences
-            }
-        }
+            })
 
+        # Write all results to the output JSON file
         with open(output_file, "w") as file:
-            json.dump(output_data, file, indent=4)
+            json.dump({"proteinChains": results}, file, indent=4)
+            print(f"Output successfully written to {output_file}")  # Debugging line
 
-        print(f"Generated {len(mutated_sequences)} mutated sequences and saved to {output_file}")
-
+    except FileNotFoundError:
+        print(f"Error: Input file '{input_file}' not found.")
     except json.JSONDecodeError:
         print("Error: Input file is not a valid JSON.")
     except Exception as e:
         print(f"An error occurred: {e}")
 
-# Example usage
 input_file = "input.json"
 output_file = "output.json"
 main(input_file, output_file)
